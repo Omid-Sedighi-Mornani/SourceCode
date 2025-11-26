@@ -56,17 +56,6 @@ env/
 *.sqlite
 *.sqlite3
 
-# Allow specific data files if needed (uncomment and adjust)
-# !Data/Processed/processed_reviews.csv
-# !Data/Processed/processed_business_covariates.csv
-
-# Large data directories
-Data/Raw/
-Data/Intermediate/
-Data/Temp/
-data/raw/
-data/intermediate/
-data/temp/
 
 # Pickle files (may contain large datasets)
 *.pkl
@@ -181,3 +170,4 @@ test.py
 experiments/
 sandbox/
 scratch/
+
