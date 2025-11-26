@@ -162,8 +162,12 @@ transformed parameters{
       vector[4] cuts = scale * inv_Phi(cumulative_sum(probs[1:4]));
       state_emission[s] = s == 1 ? 0.0 : state_emission[s-1] + exp(state_emission_raw[s-1]);
       l_tpm[s, s] = negative_infinity();
-      l_tpm[s, 1:(s-1)] = log(tpm[s, 1:(s-1)]);
-      l_tpm[s, (s+1):S] = log(tpm[s, s:(S-1)]);
+      if(s > 1){
+        l_tpm[s, 1:(s-1)] = log(tpm[s, 1:(s-1)]);
+      }
+      if(s < S){
+        l_tpm[s, (s+1):S] = log(tpm[s, s:(S-1)]);
+      }
       for (r in 1:5) {
         emission[s][r] = ordered_probit_lpmf(r | state_emission[s], cuts);
       }
