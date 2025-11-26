@@ -1,7 +1,7 @@
 functions{
   //Calculates the transition probability matrix given the duration d in state s_from and time difference between observations t
   //The diagonal element is simply log(inv_logit(intercept+d*lambda+gamma*t))
-  real calc_tpm(int s_from, int s_to, vector intercept, real d, real lambda,real t,real gamma, real senti, real epsilon ,vector[] l_tpm){
+  real calc_tpm(int s_from, int s_to, vector intercept, real d, real lambda,real t,real gamma, real senti, real epsilon ,array[] vector l_tpm){
     real diag;
     diag =  - log1p_exp(-(intercept[s_from] + lambda * d + gamma * t + senti * epsilon));
     if(s_from == s_to){
@@ -10,13 +10,13 @@ functions{
       return l_tpm[s_from,s_to] + log1m_exp(diag);
     }
   }
-  vector get_duration(int C, row_vector Q, int[] Rating, real[] Days, real[] Sentiment, int T , 
-  int S , vector l_pi , vector[] l_tpm , vector[] emission, vector intercept, 
-  real lambda, real gamma, real epsilon, 
+  vector get_duration(int C, row_vector Q, array[] int Rating, array[] real Days, array[] real Sentiment, int T ,
+  int S , vector l_pi , array[] vector l_tpm , array[] vector emission, vector intercept,
+  real lambda, real gamma, real epsilon,
   real omega_0, vector omega_tilde, vector omega_state){
-    vector[S] forw[T];
-    vector[S] duration[T];
-    vector[S] temp_tpm[S];
+    array[T] vector[S] forw;
+    array[T] vector[S] duration;
+    array[S] vector[S] temp_tpm;
     vector[T] c;
     vector[S] weighted_days;
     vector[S] logit_duration;
@@ -61,10 +61,10 @@ functions{
     
     return duration[T];
   }
-  row_vector compute_ll(int[] Rating, real[] Days, real[] Sentiment, int T , int S , vector l_pi , vector[] l_tpm , vector[] emission, vector intercept, real lambda, real gamma, real epsilon){
-    vector[S] forw[T];
-    vector[S] duration[T];
-    vector[S] temp_tpm[S];
+  row_vector compute_ll(array[] int Rating, array[] real Days, array[] real Sentiment, int T , int S , vector l_pi , array[] vector l_tpm , array[] vector emission, vector intercept, real lambda, real gamma, real epsilon){
+    array[T] vector[S] forw;
+    array[T] vector[S] duration;
+    array[S] vector[S] temp_tpm;
     vector[T] c;
     row_vector[S+1] results;
     for(s in 1:S){
@@ -111,19 +111,19 @@ data {
   int<lower=0> N_train; // number of restaurants in the training set N_test == N_total-N_train
   int<lower=1> N_obs; // Total number of reviews
   int<lower=0> nCovs; // Number of covariates
-  int<lower=1> Time[N_total];//Number of reviews for each restaurant sum(Time) == N_obs
-  int<lower=0,upper=1> Closed[N_total]; //Indicator for each restaurant if closed == 1
-  real<lower=0> Days[N_obs]; // number of days since first review of restaurant
-  int<lower=1,upper=5> Ratings[N_obs]; //All ratings
-  real Sentiment[N_obs];
+  array[N_total] int<lower=1> Time;//Number of reviews for each restaurant sum(Time) == N_obs
+  array[N_total] int<lower=0,upper=1> Closed; //Indicator for each restaurant if closed == 1
+  array[N_obs] real<lower=0> Days; // number of days since first review of restaurant
+  array[N_obs] int<lower=1,upper=5> Ratings; //All ratings
+  array[N_obs] real Sentiment;
   matrix[N_train,nCovs] Q; // thinned Q matrix of Covariates for training
   matrix[nCovs,nCovs] R;
   matrix[N_total-N_train,nCovs] X_test; //Covariates for test set
 }
 transformed data {
   //prior parameter vectors for states and pain levels
-  int pos_obs[N_total];
-  vector[S-1] prior_tpm[S];
+  array[N_total] int pos_obs;
+  array[S] vector[S-1] prior_tpm;
   {
     for(s in 1:(S)){
       prior_tpm[s] = rep_vector(1,S-1);
@@ -136,7 +136,7 @@ transformed data {
 parameters {
   //State sequence
   simplex[S] pi; //initial state distribution for each patien
-  simplex[S-1] tpm[S] ;//Transition probability matrix for each patient, time independent
+  array[S] simplex[S-1] tpm;//Transition probability matrix for each patient, time independent
   vector[S] intercept;
   real lambda;
   real gamma;
@@ -154,12 +154,12 @@ parameters {
 }
 transformed parameters{
   vector[N_train] log_lik;
-  vector[5] emission[S];
+  array[S] vector[5] emission;
   row_vector[S] duration_mean;
   row_vector[S] duration_sd;
   matrix[N_train,S] Duration;
   vector[S] l_pi = log(pi);
-  vector[S] l_tpm[S];
+  array[S] vector[S] l_tpm;
   vector[S] omega_state;
   {
     vector[S] state_emission;
@@ -184,9 +184,9 @@ transformed parameters{
       }
     }
     for(m in 1:N_train){
-      int Rating_vec[Time[m]] = Ratings[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
-      real Days_vec[Time[m]] = Days[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
-      real Sentiment_vec[Time[m]] = Sentiment[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
+      array[Time[m]] int Rating_vec = Ratings[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
+      array[Time[m]] real Days_vec = Days[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
+      array[Time[m]] real Sentiment_vec = Sentiment[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
       row_vector[S+1] results;
       results =  compute_ll(Rating_vec, Days_vec, Sentiment_vec, Time[m], 
                                S, l_pi, l_tpm, emission, intercept, lambda, gamma, epsilon);
@@ -230,9 +230,9 @@ generated quantities{
   vector[nCovs] omega_cov = R\omega_tilde;
   {
     for(m in 1:N_total){
-      int Rating_vec[Time[m]] = Ratings[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
-      real Days_vec[Time[m]] = Days[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
-      real Sentiment_vec[Time[m]] = Sentiment[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
+      array[Time[m]] int Rating_vec = Ratings[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
+      array[Time[m]] real Days_vec = Days[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
+      array[Time[m]] real Sentiment_vec = Sentiment[(1+sum(Time[1:(m-1)])):(sum(Time[1:m]))];
       row_vector[S+1] results;
       row_vector[S] scaled_duration;
       results =  compute_ll(Rating_vec, Days_vec, Sentiment_vec ,Time[m], 
