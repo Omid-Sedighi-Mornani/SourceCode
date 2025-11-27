@@ -4,8 +4,8 @@ Constants for directory paths used across the project.
 
 from pathlib import Path
 
-# Project root directory (parent of helpers/)
-PROJECT_ROOT = Path(__file__)
+# Project root directory
+PROJECT_ROOT = Path(__file__).parent
 
 # Main directories
 DATA_FOLDER = PROJECT_ROOT / "data"
