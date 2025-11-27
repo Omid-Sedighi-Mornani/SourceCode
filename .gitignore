@@ -58,9 +58,9 @@ env/
 
 
 # Pickle files (may contain large datasets)
-*.pkl
-*.pickle
-*.p
+# *.pkl
+# *.pickle
+# *.p
 
 # Model files
 *.h5
