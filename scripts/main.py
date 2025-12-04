@@ -21,7 +21,7 @@ Optional Parameters:
     --iter-sampling  Number of sampling iterations (default: 1000)
     --adapt-delta    Stan adapt_delta parameter, 0.8-0.99 (default: 0.95)
     --max-treedepth  Stan max_treedepth parameter (default: 10)
-    --skip-processing Skip data processing, load from processed_data.pkl
+    --skip-processing Skip data processing, load from processed_data_for_hmm_training.pkl
 
 Examples:
     # Basic usage - train HMM with S=2, seed=42
@@ -33,7 +33,7 @@ Examples:
     # Quick test with shorter chains
     python scripts/main.py --model hmm --seed 42 --state 2 --iter-warmup 100 --iter-sampling 100
 
-    # Skip data processing (must have processed_data.pkl from previous run)
+    # Skip data processing (must have processed_data_for_hmm_training.pkl from previous run)
     python scripts/main.py --model vdhmm --seed 42 --state 3 --skip-processing
 
     # Custom chain configuration
@@ -459,7 +459,7 @@ def main():
     parser.add_argument(
         "--skip-processing",
         action="store_true",
-        help="Skip data processing and load from processed_data.pkl",
+        help="Skip data processing and load from processed_data_for_hmm_training.pkl",
     )
 
     args = parser.parse_args()
@@ -487,7 +487,7 @@ def main():
     # Process data or load existing
     if args.skip_processing:
         print("\n[Skipping data processing, loading from file...]")
-        processed_data_path = PROCESSED_DATA_FOLDER / "processed_data.pkl"
+        processed_data_path = PROCESSED_DATA_FOLDER / "processed_data_for_hmm_training.pkl"
         if not processed_data_path.exists():
             raise FileNotFoundError(
                 f"Processed data not found: {processed_data_path}\n"
@@ -497,7 +497,7 @@ def main():
         print(model_data.summary())
     else:
         model_data = process_data(seed=args.seed)
-        output_path = PROCESSED_DATA_FOLDER / "processed_data.pkl"
+        output_path = PROCESSED_DATA_FOLDER / "processed_data_for_hmm_training.pkl"
         model_data.to_pickle(output_path)
         print(f"\n✓ Processed data saved to {output_path}")
 
