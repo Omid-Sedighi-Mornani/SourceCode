@@ -380,20 +380,34 @@ def train_model_cmdstan(
     # Sample
     print(f"\nSampling...")
     start_time = time.time()
-    fit = model.sample(
-        data=stan_data,
-        chains=chains,
-        parallel_chains=parallel_chains,
-        iter_warmup=iter_warmup,
-        iter_sampling=iter_sampling,
-        seed=seed,
-        adapt_delta=adapt_delta,
-        max_treedepth=max_treedepth,
-        show_progress=True,
-    )
-    elapsed_time = time.time() - start_time
-
-    print(f"\n✓ Sampling complete! (took {elapsed_time:.1f}s)")
+    try:
+        fit = model.sample(
+            data=stan_data,
+            chains=chains,
+            parallel_chains=parallel_chains,
+            iter_warmup=iter_warmup,
+            iter_sampling=iter_sampling,
+            seed=seed,
+            adapt_delta=adapt_delta,
+            max_treedepth=max_treedepth,
+            show_progress=True,
+            show_console=True,  # Show Stan console output for debugging
+        )
+        elapsed_time = time.time() - start_time
+        print(f"\n✓ Sampling complete! (took {elapsed_time:.1f}s)")
+    except RuntimeError as e:
+        print(f"\n{'='*70}")
+        print("STAN SAMPLING ERROR")
+        print(f"{'='*70}")
+        print(f"\nError message: {e}")
+        print(f"\nTroubleshooting tips:")
+        print("1. Check if Stan model file exists and is correct")
+        print("2. Verify input data doesn't contain NaN or Inf values")
+        print("3. Try with fewer chains: --chains 1 --parallel-chains 1")
+        print("4. Try shorter iterations: --iter-warmup 100 --iter-sampling 100")
+        print("5. Check system memory usage")
+        raise
+        elapsed_time = 0
 
     # Save model
     output_path = FITTED_MODEL_FOLDER / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
