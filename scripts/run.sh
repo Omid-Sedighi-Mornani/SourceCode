@@ -9,4 +9,4 @@
 
 # Activate your environment and run
 cd ~/SourceCode
-uv run python scripts/main.py 
+uv run scripts/main.py --model hmm --seed 42 --state 2 --iter-sampling 5  --iter-warmup 5
