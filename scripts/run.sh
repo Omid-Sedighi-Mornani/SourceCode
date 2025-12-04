@@ -1,12 +1,28 @@
 #!/bin/bash
-#SBATCH --job-name=training
+
+# Define parameter arrays
+models=("hmm" "vdhmm")
+seeds=(43 123)
+states=(2 3 4)
+
+# Loop through all combinations and submit jobs
+for model in "${models[@]}"; do
+    for seed in "${seeds[@]}"; do
+        for state in "${states[@]}"; do
+            sbatch <<EOF
+#!/bin/bash
+#SBATCH --job-name=${model}_s${seed}_st${state}
 #SBATCH --partition=main
 #SBATCH --time=50:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=64G
-#SBATCH --output=%x-%j.out
-#SBATCH --error=%x-%j.err
+#SBATCH --output=${model}_s${seed}_st${state}-%j.out
+#SBATCH --error=${model}_s${seed}_st${state}-%j.err
 
-# Activate your environment and run
 cd ~/SourceCode
-uv run scripts/main.py --model hmm --seed 42 --state 2 --iter-sampling 5  --iter-warmup 5
+uv run scripts/main.py --model ${model} --seed ${seed} --state ${state}
+EOF
+            echo "Submitted job: model=${model}, seed=${seed}, state=${state}"
+        done
+    done
+done
