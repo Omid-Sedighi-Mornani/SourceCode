@@ -109,7 +109,7 @@ def process_data(seed: int = 42) -> ModelData:
         by="Train", ascending=False
     ).reset_index(drop=True)
 
-    n_train = len(business_covariates["Train"])
+    n_train = len(train_indices)
     print(f"  Training: {len(train_indices)}")
     print(f"  Calibration: {len(calibration_indices)}")
     print(f"  Evaluation: {len(eval_indices)}")
