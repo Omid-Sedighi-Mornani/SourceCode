@@ -223,57 +223,8 @@ def process_data(seed: int = 42) -> ModelData:
     R_scaled = R / np.sqrt(n_train - 1)
     X_test = cov_mat_preprocessed[n_train:]
 
-    # Prepare benchmark covariates
-    print("\n[8/8] Preparing benchmark covariates...")
-    review_stats = (
-        reviews.groupby("business_id")
-        .agg(
-            VAR=("stars", "var"),
-            MEAN=("stars", "mean"),
-            ENTR=("stars", lambda x: comp_entropy(x)),
-            COUNT=("stars", "size"),
-            ONE_STAR=("stars", lambda x: (x == 1).sum()),
-            TWO_STAR=("stars", lambda x: (x == 2).sum()),
-            THREE_STAR=("stars", lambda x: (x == 3).sum()),
-            FOUR_STAR=("stars", lambda x: (x == 4).sum()),
-            FIVE_STAR=("stars", lambda x: (x == 5).sum()),
-        )
-        .reset_index()
-    )
-
-    for col in ["ONE_STAR", "TWO_STAR", "THREE_STAR", "FOUR_STAR", "FIVE_STAR"]:
-        review_stats[col] = review_stats[col] / review_stats["COUNT"]
-
-    benchmark_covariates = business_covariates[
-        [
-            "business_id",
-            "density",
-            "Checkin",
-            "category",
-            "chain",
-            "Price.Level",
-            "Restaurant.Size",
-            "Number.of.Seats",
-            "ZRI",
-            "Distance.To.City.Centre",
-            "Age",
-            "is_open",
-        ]
-    ].copy()
-
-    benchmark_covariates["Closed"] = 1 - benchmark_covariates["is_open"]
-    benchmark_covariates = benchmark_covariates.merge(
-        review_stats, on="business_id", how="left"
-    )
-    benchmark_covariates["l_COUNT"] = np.log(benchmark_covariates["COUNT"])
-    benchmark_covariates["category"] = benchmark_covariates["category"].astype(
-        "category"
-    )
-    benchmark_covariates["Closed"] = (
-        benchmark_covariates["Closed"].map({1: "Closed", 0: "Open"}).astype("category")
-    )
-
     # Create ModelData object
+    print("\n[8/8] Creating ModelData object...")
     model_data = ModelData(
         n_states=None,
         n_total=len(time),
@@ -295,7 +246,8 @@ def process_data(seed: int = 42) -> ModelData:
         eval_indices=eval_indices,
         business_covariates=business_covariates,
         cov_mat=cov_mat_preprocessed,
-        benchmark_covariates=benchmark_covariates,
+        # benchmark_covariates not needed for HMM training
+        benchmark_covariates=None,
     )
 
     print("\n✓ Data processing complete!")
