@@ -13,7 +13,7 @@ for model in "${models[@]}"; do
 #!/bin/bash
 #SBATCH --job-name=${model}_s${seed}_st${state}
 #SBATCH --partition=main
-#SBATCH --time=50:00:00
+#SBATCH --time=20:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=64G
 #SBATCH --output=${model}_s${seed}_st${state}-%j.out
