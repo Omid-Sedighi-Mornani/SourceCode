@@ -171,3 +171,5 @@ experiments/
 sandbox/
 scratch/
 
+# backup files
+backups/*
