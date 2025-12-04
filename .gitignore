@@ -58,7 +58,7 @@ env/
 
 
 # Pickle files (may contain large datasets)
-# *.pkl
+# *.pkl 
 # *.pickle
 # *.p
 
@@ -170,4 +170,7 @@ test.py
 experiments/
 sandbox/
 scratch/
+
+# backup files
+backups/*
 
