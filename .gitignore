@@ -174,3 +174,7 @@ scratch/
 # backup files
 backups/*
 
+# stan binaries
+data/stan_code/hmm
+data/stan_code/vdhmm
+
