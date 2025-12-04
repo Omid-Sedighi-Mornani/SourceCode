@@ -4,12 +4,40 @@ Main script for data processing and model training.
 
 This script performs:
 1. Data processing (replicating notebook 1-processing.ipynb)
-2. HMM model training (S=2,3,4)
-3. VDHMM model training (S=2,3,4)
-4. Multiple random seeds for consistency testing
+2. Model training for HMM or VDHMM with specified parameters
 
 Usage:
-    python scripts/main.py [--seeds 42 123 456] [--states 2 3 4] [--models hmm vdhmm]
+    python scripts/main.py --model <hmm|vdhmm> --seed <int> --state <2-5> [OPTIONS]
+
+Required Parameters:
+    --model          Model type: 'hmm' or 'vdhmm'
+    --seed           Random seed for reproducibility (any integer, e.g., 42, 123, 456)
+    --state          Number of hidden states: 2, 3, 4, or 5
+
+Optional Parameters:
+    --chains         Number of MCMC chains (default: 4)
+    --parallel-chains Number of parallel chains (default: 4)
+    --iter-warmup    Number of warmup iterations (default: 1000)
+    --iter-sampling  Number of sampling iterations (default: 1000)
+    --adapt-delta    Stan adapt_delta parameter, 0.8-0.99 (default: 0.95)
+    --max-treedepth  Stan max_treedepth parameter (default: 10)
+    --skip-processing Skip data processing, load from processed_data.pkl
+
+Examples:
+    # Basic usage - train HMM with S=2, seed=42
+    python scripts/main.py --model hmm --seed 42 --state 2
+
+    # Train VDHMM with S=3, seed=123
+    python scripts/main.py --model vdhmm --seed 123 --state 3
+
+    # Quick test with shorter chains
+    python scripts/main.py --model hmm --seed 42 --state 2 --iter-warmup 100 --iter-sampling 100
+
+    # Skip data processing (must have processed_data.pkl from previous run)
+    python scripts/main.py --model vdhmm --seed 42 --state 3 --skip-processing
+
+    # Custom chain configuration
+    python scripts/main.py --model hmm --seed 42 --state 4 --chains 2 --parallel-chains 2
 """
 
 import sys
@@ -407,26 +435,24 @@ def main():
         description="Data processing and model training pipeline"
     )
     parser.add_argument(
-        "--seeds",
-        type=int,
-        nargs="+",
-        default=[42, 123, 456],
-        help="Random seeds to test (default: 42 123 456)",
-    )
-    parser.add_argument(
-        "--states",
-        type=int,
-        nargs="+",
-        default=[2, 3, 4],
-        help="Number of hidden states to test (default: 2 3 4)",
-    )
-    parser.add_argument(
-        "--models",
+        "--model",
         type=str,
-        nargs="+",
-        default=["hmm", "vdhmm"],
+        required=True,
         choices=["hmm", "vdhmm"],
-        help="Models to train (default: hmm vdhmm)",
+        help="Model to train: 'hmm' or 'vdhmm'",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        required=True,
+        help="Random seed for reproducibility",
+    )
+    parser.add_argument(
+        "--state",
+        type=int,
+        required=True,
+        choices=[2, 3, 4, 5],
+        help="Number of hidden states (2-5)",
     )
     parser.add_argument(
         "--chains",
@@ -482,9 +508,9 @@ def main():
     print(f"\nCmdStanPy Version: {cmdstanpy.__version__}")
     print(f"CmdStan Path: {cmdstanpy.cmdstan_path()}")
     print(f"\nConfiguration:")
-    print(f"  Random seeds: {args.seeds}")
-    print(f"  Hidden states: {args.states}")
-    print(f"  Models: {args.models}")
+    print(f"  Model: {args.model}")
+    print(f"  Random seed: {args.seed}")
+    print(f"  Hidden states: {args.state}")
     print(f"  Chains: {args.chains}")
     print(f"  Parallel chains: {args.parallel_chains}")
     print(f"  Warmup iterations: {args.iter_warmup}")
@@ -492,91 +518,66 @@ def main():
     print(f"  Adapt delta: {args.adapt_delta}")
     print(f"  Max treedepth: {args.max_treedepth}")
 
-    # Track all trained models
-    trained_models = {}
-    processing_times = {}
+    # Process data or load existing
+    if args.skip_processing:
+        print("\n[Skipping data processing, loading from file...]")
+        processed_data_path = PROCESSED_DATA_FOLDER / "processed_data.pkl"
+        if not processed_data_path.exists():
+            raise FileNotFoundError(
+                f"Processed data not found: {processed_data_path}\n"
+                "Run without --skip-processing first."
+            )
+        model_data = ModelData.from_pickle(processed_data_path)
+        print(model_data.summary())
+    else:
+        model_data = process_data(seed=args.seed)
+        output_path = PROCESSED_DATA_FOLDER / "processed_data.pkl"
+        model_data.to_pickle(output_path)
+        print(f"\n✓ Processed data saved to {output_path}")
 
-    # Loop over seeds
-    for seed_idx, seed in enumerate(args.seeds):
-        print("\n" + "=" * 70)
-        print(f"SEED {seed_idx + 1}/{len(args.seeds)}: {seed}")
-        print("=" * 70)
+    # Train the model
+    print(f"\n\n{'#'*70}")
+    print(f"# {args.model.upper()} Training: S={args.state}, Seed={args.seed}")
+    print(f"{'#'*70}\n")
 
-        # Process data or load existing
-        if args.skip_processing and seed == args.seeds[0]:
-            print("\n[Skipping data processing, loading from file...]")
-            processed_data_path = PROCESSED_DATA_FOLDER / "processed_data.pkl"
-            if not processed_data_path.exists():
-                raise FileNotFoundError(
-                    f"Processed data not found: {processed_data_path}\n"
-                    "Run without --skip-processing first."
-                )
-            model_data = ModelData.from_pickle(processed_data_path)
-            print(model_data.summary())
-        else:
-            model_data = process_data(seed=seed)
+    try:
+        fit = train_model_cmdstan(
+            model_data=model_data,
+            S=args.state,
+            model_name=args.model,
+            chains=args.chains,
+            parallel_chains=args.parallel_chains,
+            iter_warmup=args.iter_warmup,
+            iter_sampling=args.iter_sampling,
+            seed=args.seed,
+            adapt_delta=args.adapt_delta,
+            max_treedepth=args.max_treedepth,
+        )
 
-            # Save processed data for first seed
-            if seed_idx == 0:
-                output_path = PROCESSED_DATA_FOLDER / "processed_data.pkl"
-                model_data.to_pickle(output_path)
-                print(f"\n✓ Processed data saved to {output_path}")
+        print(
+            f"\n✓✓✓ {args.model.upper()} with S={args.state}, Seed={args.seed} completed! ✓✓✓\n"
+        )
 
-        # Train models
-        for model_name in args.models:
-            for S in args.states:
-                model_key = f"{model_name}_S{S}_seed{seed}"
-
-                try:
-                    print(f"\n\n{'#'*70}")
-                    print(f"# {model_name.upper()} Training: S={S}, Seed={seed}")
-                    print(f"{'#'*70}\n")
-
-                    fit = train_model_cmdstan(
-                        model_data=model_data,
-                        S=S,
-                        model_name=model_name,
-                        chains=args.chains,
-                        parallel_chains=args.parallel_chains,
-                        iter_warmup=args.iter_warmup,
-                        iter_sampling=args.iter_sampling,
-                        seed=seed,
-                        adapt_delta=args.adapt_delta,
-                        max_treedepth=args.max_treedepth,
-                    )
-
-                    trained_models[model_key] = fit
-                    print(
-                        f"\n✓✓✓ {model_name.upper()} with S={S}, Seed={seed} completed! ✓✓✓\n"
-                    )
-
-                except Exception as e:
-                    print(
-                        f"\n✗✗✗ Error training {model_name.upper()} with S={S}, Seed={seed}: {e} ✗✗✗\n"
-                    )
-                    raise
+    except Exception as e:
+        print(
+            f"\n✗✗✗ Error training {args.model.upper()} with S={args.state}, Seed={args.seed}: {e} ✗✗✗\n"
+        )
+        raise
 
     # Final summary
     print("\n" + "=" * 70)
-    print("TRAINING SUMMARY")
+    print("TRAINING COMPLETE!")
     print("=" * 70)
-    print(f"\nTotal models trained: {len(trained_models)}")
-    print(f"\nModels trained:")
-    for model_key in sorted(trained_models.keys()):
-        print(f"  - {model_key}")
+    print(f"\nModel trained: {args.model}_S{args.state}_seed{args.seed}")
+    print(f"Saved in: {FITTED_MODEL_FOLDER}")
 
-    print(f"\nSaved in: {FITTED_MODEL_FOLDER}")
-
-    # List all saved models
-    saved_models = sorted(FITTED_MODEL_FOLDER.glob("*_cmdstan.pkl"))
-    print(f"\nAll saved model files ({len(saved_models)}):")
-    for model_file in saved_models:
-        size_mb = model_file.stat().st_size / (1024 * 1024)
-        print(f"  - {model_file.name} ({size_mb:.2f} MB)")
-
-    print("\n" + "=" * 70)
-    print("ALL TRAINING COMPLETE!")
-    print("=" * 70)
+    # Show the saved model file
+    output_file = (
+        FITTED_MODEL_FOLDER / f"{args.model}_{args.state}_seed{args.seed}_cmdstan.pkl"
+    )
+    if output_file.exists():
+        size_mb = output_file.stat().st_size / (1024 * 1024)
+        print(f"\nModel file: {output_file.name} ({size_mb:.2f} MB)")
 
 
 if __name__ == "__main__":
