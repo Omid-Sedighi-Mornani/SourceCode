@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=training
 #SBATCH --partition=main
-#SBATCH --time=8:00:00
+#SBATCH --time=50:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=64G
 #SBATCH --output=%x-%j.out
