@@ -146,22 +146,6 @@ plots/
 *.rar
 *.7z
 
-# R files (if you use R alongside Python)
-.Rhistory
-.RData
-.Rproj.user/
-
-# LaTeX (for academic papers)
-*.aux
-*.bbl
-*.blg
-*.fdb_latexmk
-*.fls
-*.lof
-*.lot
-*.toc
-*.synctex.gz
-
 # Claude Code specific
 .claude/
 
