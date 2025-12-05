@@ -14,13 +14,13 @@ for model in "${models[@]}"; do
 #SBATCH --job-name=${model}_s${seed}_st${state}
 #SBATCH --partition=main
 #SBATCH --time=20:00:00
-#SBATCH --cpus-per-task=32
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=${model}_s${seed}_st${state}-%j.out
 #SBATCH --error=${model}_s${seed}_st${state}-%j.err
 
 cd ~/SourceCode
-uv run scripts/main.py --model ${model} --seed ${seed} --state ${state}
+uv run scripts/main.py --model ${model} --seed ${seed} --state ${state} --chains 4 --parallel_chains 4 --threads_per_chain 4
 EOF
             echo "Submitted job: model=${model}, seed=${seed}, state=${state}"
         done

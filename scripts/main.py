@@ -15,8 +15,9 @@ Required Parameters:
     --state          Number of hidden states: 2, 3, 4, or 5
 
 Optional Parameters:
-    --chains         Number of MCMC chains (default: 4)
-    --parallel-chains Number of parallel chains (default: 4)
+    --chains         Number of MCMC chains (default: 2)
+    --parallel-chains Number of parallel chains (default: 2)
+    --threads-per-chain Number of threads per chain (default: 1)
     --iter-warmup    Number of warmup iterations (default: 1000)
     --iter-sampling  Number of sampling iterations (default: 1000)
     --adapt-delta    Stan adapt_delta parameter, 0.8-0.99 (default: 0.95)
@@ -37,7 +38,7 @@ Examples:
     python scripts/main.py --model vdhmm --seed 42 --state 3 --skip-processing
 
     # Custom chain configuration
-    python scripts/main.py --model hmm --seed 42 --state 4 --chains 2 --parallel-chains 2
+    python scripts/main.py --model hmm --seed 42 --state 4 --chains 4 --parallel-chains 2 --threads-per-chain 2
 """
 
 import sys
@@ -260,8 +261,9 @@ def train_model_cmdstan(
     model_data: ModelData,
     S: int,
     model_name: str = "hmm",
-    chains: int = 4,
-    parallel_chains: int = 4,
+    chains: int = 2,
+    parallel_chains: int = 2,
+    threads_per_chain: int = 1,
     iter_warmup: int = 1000,
     iter_sampling: int = 1000,
     seed: int = 42,
@@ -283,6 +285,8 @@ def train_model_cmdstan(
         Number of MCMC chains
     parallel_chains : int
         Number of chains to run in parallel
+    threads_per_chain : int
+        Number of threads per chain
     iter_warmup : int
         Number of warmup iterations
     iter_sampling : int
@@ -317,6 +321,7 @@ def train_model_cmdstan(
     print(f"\nConfiguration:")
     print(f"  Chains: {chains}")
     print(f"  Parallel chains: {parallel_chains}")
+    print(f"  Threads per chain: {threads_per_chain}")
     print(f"  Warmup iterations: {iter_warmup}")
     print(f"  Sampling iterations: {iter_sampling}")
     print(f"  Total iterations: {iter_warmup + iter_sampling}")
@@ -326,7 +331,9 @@ def train_model_cmdstan(
 
     # Compile model
     print(f"\nCompiling model...")
-    model = cmdstanpy.CmdStanModel(stan_file=str(model_file))
+    model = cmdstanpy.CmdStanModel(
+        stan_file=str(model_file), cpp_options={"STAN_THREADS": True}
+    )
     print(f"✓ Model compiled")
 
     # Sample
@@ -337,6 +344,7 @@ def train_model_cmdstan(
             data=stan_data,
             chains=chains,
             parallel_chains=parallel_chains,
+            threads_per_chain=threads_per_chain,
             iter_warmup=iter_warmup,
             iter_sampling=iter_sampling,
             seed=seed,
@@ -423,14 +431,20 @@ def main():
     parser.add_argument(
         "--chains",
         type=int,
-        default=4,
-        help="Number of MCMC chains (default: 4)",
+        default=2,
+        help="Number of MCMC chains (default: 2)",
     )
     parser.add_argument(
         "--parallel-chains",
         type=int,
-        default=4,
-        help="Number of parallel chains (default: 4)",
+        default=2,
+        help="Number of parallel chains (default: 2)",
+    )
+    parser.add_argument(
+        "--threads-per-chain",
+        type=int,
+        default=1,
+        help="Number of threads per chain (default: 1)",
     )
     parser.add_argument(
         "--iter-warmup",
@@ -479,6 +493,7 @@ def main():
     print(f"  Hidden states: {args.state}")
     print(f"  Chains: {args.chains}")
     print(f"  Parallel chains: {args.parallel_chains}")
+    print(f"  Threads per chain: {args.threads_per_chain}")
     print(f"  Warmup iterations: {args.iter_warmup}")
     print(f"  Sampling iterations: {args.iter_sampling}")
     print(f"  Adapt delta: {args.adapt_delta}")
@@ -487,7 +502,9 @@ def main():
     # Process data or load existing
     if args.skip_processing:
         print("\n[Skipping data processing, loading from file...]")
-        processed_data_path = PROCESSED_DATA_FOLDER / "processed_data_for_hmm_training.pkl"
+        processed_data_path = (
+            PROCESSED_DATA_FOLDER / "processed_data_for_hmm_training.pkl"
+        )
         if not processed_data_path.exists():
             raise FileNotFoundError(
                 f"Processed data not found: {processed_data_path}\n"
@@ -513,6 +530,7 @@ def main():
             model_name=args.model,
             chains=args.chains,
             parallel_chains=args.parallel_chains,
+            threads_per_chain=args.threads_per_chain,
             iter_warmup=args.iter_warmup,
             iter_sampling=args.iter_sampling,
             seed=args.seed,
