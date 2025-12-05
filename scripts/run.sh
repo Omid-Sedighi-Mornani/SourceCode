@@ -20,7 +20,7 @@ for model in "${models[@]}"; do
 #SBATCH --error=${model}_s${seed}_st${state}-%j.err
 
 cd ~/SourceCode
-uv run scripts/main.py --model ${model} --seed ${seed} --state ${state} --chains 4 --parallel_chains 4 --threads_per_chain 4
+uv run scripts/main.py --model ${model} --seed ${seed} --state ${state} --chains 4 --parallel-chains 4 --threads-per-chain 4
 EOF
             echo "Submitted job: model=${model}, seed=${seed}, state=${state}"
         done
