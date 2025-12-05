@@ -606,11 +606,17 @@ def main():
 
     # Display model info based on whether original indices were used
     if args.use_original_indices:
-        model_identifier = f"{args.model}_S{args.state}_original_indices"
-        output_file = FITTED_MODEL_FOLDER / f"{args.model}_{args.state}_original_indices_cmdstan.pkl"
+        model_identifier = f"{args.model}_{args.state}_original_indices"
+        output_file = (
+            FITTED_MODEL_FOLDER
+            / f"{args.model}_{args.state}_original_indices_cmdstan.pkl"
+        )
     else:
-        model_identifier = f"{args.model}_S{args.state}_seed{args.seed}"
-        output_file = FITTED_MODEL_FOLDER / f"{args.model}_{args.state}_seed{args.seed}_cmdstan.pkl"
+        model_identifier = f"{args.model}_{args.state}_seed{args.seed}"
+        output_file = (
+            FITTED_MODEL_FOLDER
+            / f"{args.model}_{args.state}_seed{args.seed}_cmdstan.pkl"
+        )
 
     print(f"\nModel trained: {model_identifier}")
     print(f"Saved in: {FITTED_MODEL_FOLDER}")
