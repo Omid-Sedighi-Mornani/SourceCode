@@ -23,6 +23,7 @@ Optional Parameters:
     --adapt-delta    Stan adapt_delta parameter, 0.8-0.99 (default: 0.95)
     --max-treedepth  Stan max_treedepth parameter (default: 10)
     --skip-processing Skip data processing, load from processed_data_for_hmm_training.pkl
+    --use-original-indices Use original paper indices from indices.Rdata instead of random seed
 
 Examples:
     # Basic usage - train HMM with S=2, seed=42
@@ -30,6 +31,9 @@ Examples:
 
     # Train VDHMM with S=3, seed=123
     python scripts/main.py --model vdhmm --seed 123 --state 3
+
+    # Use original paper indices instead of random seed
+    python scripts/main.py --model hmm --seed 42 --state 2 --use-original-indices
 
     # Quick test with shorter chains
     python scripts/main.py --model hmm --seed 42 --state 2 --iter-warmup 100 --iter-sampling 100
@@ -62,11 +66,14 @@ from constants import (
     PROCESSED_DATA_FOLDER,
     STAN_MODEL_FOLDER,
     FITTED_MODEL_FOLDER,
+    TRAIN_INDICES,
+    EVAL_INDICES,
+    CALIBRATION_INDICES,
 )
 from helpers import ModelData, comp_entropy, prepare_stan_data
 
 
-def process_data(seed: int = 42) -> ModelData:
+def process_data(seed: int = 42, use_original_indices: bool = False) -> ModelData:
     """
     Process raw data and prepare it for model training.
 
@@ -75,7 +82,10 @@ def process_data(seed: int = 42) -> ModelData:
     Parameters
     ----------
     seed : int
-        Random seed for reproducibility
+        Random seed for reproducibility (only used if use_original_indices=False)
+    use_original_indices : bool
+        If True, use the original indices from the paper (indices.Rdata).
+        If False, generate new random indices using the seed.
 
     Returns
     -------
@@ -85,10 +95,13 @@ def process_data(seed: int = 42) -> ModelData:
     print("\n" + "=" * 70)
     print("DATA PROCESSING")
     print("=" * 70)
-    print(f"Random seed: {seed}")
 
-    # Set random seed
-    np.random.seed(seed)
+    if use_original_indices:
+        print(f"Using original paper indices from indices.Rdata")
+    else:
+        print(f"Random seed: {seed}")
+        # Set random seed
+        np.random.seed(seed)
 
     # Load data
     print("\n[1/8] Loading raw data...")
@@ -99,10 +112,20 @@ def process_data(seed: int = 42) -> ModelData:
 
     # Create train/calibration/eval splits
     print("\n[2/8] Creating train/calibration/eval splits...")
-    indices = np.random.permutation(len(business_covariates))
-    train_indices = indices[:500]
-    calibration_indices = indices[500:700]
-    eval_indices = indices[700:]
+
+    if use_original_indices:
+        # Use original indices from the paper
+        train_indices = TRAIN_INDICES.copy()
+        calibration_indices = CALIBRATION_INDICES.copy()
+        eval_indices = EVAL_INDICES.copy()
+        print("  Using ORIGINAL indices from paper (indices.Rdata)")
+    else:
+        # Generate random indices using the seed
+        indices = np.random.permutation(len(business_covariates))
+        train_indices = indices[:500]
+        calibration_indices = indices[500:700]
+        eval_indices = indices[700:]
+        print("  Using RANDOM indices generated with seed")
 
     business_covariates["Train"] = 0
     business_covariates.loc[train_indices, "Train"] = 1
@@ -269,6 +292,7 @@ def train_model_cmdstan(
     seed: int = 42,
     adapt_delta: float = 0.95,
     max_treedepth: int = 10,
+    use_original_indices: bool = False,
 ) -> cmdstanpy.CmdStanMCMC:
     """
     Train a model using CmdStanPy.
@@ -297,6 +321,8 @@ def train_model_cmdstan(
         Stan adapt_delta parameter (0.8-0.99)
     max_treedepth : int
         Stan max_treedepth parameter
+    use_original_indices : bool
+        Whether original paper indices were used for preprocessing
 
     Returns
     -------
@@ -369,8 +395,14 @@ def train_model_cmdstan(
         raise
         elapsed_time = 0
 
-    # Save model
-    output_path = FITTED_MODEL_FOLDER / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
+    # Save model with appropriate filename
+    if use_original_indices:
+        output_path = (
+            FITTED_MODEL_FOLDER / f"{model_name}_{S}_original_indices_cmdstan.pkl"
+        )
+    else:
+        output_path = FITTED_MODEL_FOLDER / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
+
     with open(output_path, "wb") as f:
         pickle.dump(
             {
@@ -475,6 +507,11 @@ def main():
         action="store_true",
         help="Skip data processing and load from processed_data_for_hmm_training.pkl",
     )
+    parser.add_argument(
+        "--use-original-indices",
+        action="store_true",
+        help="Use original paper indices instead of random seed",
+    )
 
     args = parser.parse_args()
 
@@ -490,6 +527,7 @@ def main():
     print(f"\nConfiguration:")
     print(f"  Model: {args.model}")
     print(f"  Random seed: {args.seed}")
+    print(f"  Use original indices: {args.use_original_indices}")
     print(f"  Hidden states: {args.state}")
     print(f"  Chains: {args.chains}")
     print(f"  Parallel chains: {args.parallel_chains}")
@@ -513,8 +551,20 @@ def main():
         model_data = ModelData.from_pickle(processed_data_path)
         print(model_data.summary())
     else:
-        model_data = process_data(seed=args.seed)
-        output_path = PROCESSED_DATA_FOLDER / "processed_data_for_hmm_training.pkl"
+        model_data = process_data(
+            seed=args.seed, use_original_indices=args.use_original_indices
+        )
+        # Adjust output path based on whether original indices were used
+        if args.use_original_indices:
+            output_path = (
+                PROCESSED_DATA_FOLDER
+                / "processed_data_for_hmm_training_original_indices.pkl"
+            )
+        else:
+            output_path = (
+                PROCESSED_DATA_FOLDER
+                / f"processed_data_for_hmm_training_seed{args.seed}.pkl"
+            )
         model_data.to_pickle(output_path)
         print(f"\n✓ Processed data saved to {output_path}")
 
@@ -536,6 +586,7 @@ def main():
             seed=args.seed,
             adapt_delta=args.adapt_delta,
             max_treedepth=args.max_treedepth,
+            use_original_indices=args.use_original_indices,
         )
 
         print(
@@ -552,13 +603,19 @@ def main():
     print("\n" + "=" * 70)
     print("TRAINING COMPLETE!")
     print("=" * 70)
-    print(f"\nModel trained: {args.model}_S{args.state}_seed{args.seed}")
+
+    # Display model info based on whether original indices were used
+    if args.use_original_indices:
+        model_identifier = f"{args.model}_S{args.state}_original_indices"
+        output_file = FITTED_MODEL_FOLDER / f"{args.model}_{args.state}_original_indices_cmdstan.pkl"
+    else:
+        model_identifier = f"{args.model}_S{args.state}_seed{args.seed}"
+        output_file = FITTED_MODEL_FOLDER / f"{args.model}_{args.state}_seed{args.seed}_cmdstan.pkl"
+
+    print(f"\nModel trained: {model_identifier}")
     print(f"Saved in: {FITTED_MODEL_FOLDER}")
 
     # Show the saved model file
-    output_file = (
-        FITTED_MODEL_FOLDER / f"{args.model}_{args.state}_seed{args.seed}_cmdstan.pkl"
-    )
     if output_file.exists():
         size_mb = output_file.stat().st_size / (1024 * 1024)
         print(f"\nModel file: {output_file.name} ({size_mb:.2f} MB)")
