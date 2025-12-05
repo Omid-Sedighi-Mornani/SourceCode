@@ -14,7 +14,7 @@ for model in "${models[@]}"; do
 #SBATCH --job-name=${model}_s${seed}_st${state}
 #SBATCH --partition=main
 #SBATCH --time=20:00:00
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --output=${model}_s${seed}_st${state}-%j.out
 #SBATCH --error=${model}_s${seed}_st${state}-%j.err
