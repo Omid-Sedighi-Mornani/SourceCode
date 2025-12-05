@@ -166,7 +166,7 @@ plots/
 .claude/
 
 # Specific to this project (customize as needed)
-test.py
+testing.py
 experiments/
 sandbox/
 scratch/
@@ -177,4 +177,6 @@ backups/*
 # stan binaries
 data/stan_code/hmm
 data/stan_code/vdhmm
+
+
 
