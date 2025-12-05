@@ -22,9 +22,7 @@ def create_model_comparison_df(
         Liste von Dictionaries mit Keys:
         - 'model_type': str (z.B. "Logistic Regression")
         - 'features': str (z.B. "Mean Rating", "All Features")
-        - 'y_pred_train': array
         - 'y_proba_train': array
-        - 'y_pred_test': array
         - 'y_proba_test': array
     y_train : array
         True labels für Training
@@ -39,7 +37,6 @@ def create_model_comparison_df(
     data = {
         'Model Type': [],
         'Features': [],
-        'Test Accuracy': [],
         'Test ROC-AUC': [],
         'Train ROC-AUC': []
     }
@@ -47,9 +44,6 @@ def create_model_comparison_df(
     for config in model_configs:
         data['Model Type'].append(config['model_type'])
         data['Features'].append(config['features'])
-        data['Test Accuracy'].append(
-            accuracy_score(y_test, config['y_pred_test'])
-        )
         data['Test ROC-AUC'].append(
             roc_auc_score(y_test, config['y_proba_test'])
         )
@@ -58,7 +52,6 @@ def create_model_comparison_df(
         )
 
     df = pd.DataFrame(data)
-    df['Overfitting Gap'] = df['Train ROC-AUC'] - df['Test ROC-AUC']
 
     return df
 
@@ -152,12 +145,9 @@ def get_model_predictions(
 def print_model_summary(
     model_name: str,
     y_train: npt.NDArray[np.int_],
-    y_pred_train: npt.NDArray[np.int_],
     y_proba_train: npt.NDArray[np.float64],
     y_test: npt.NDArray[np.int_],
-    y_pred_test: npt.NDArray[np.int_],
-    y_proba_test: npt.NDArray[np.float64],
-    classification_report_fn: Callable
+    y_proba_test: npt.NDArray[np.float64]
 ) -> None:
     """
     Druckt eine standardisierte Modell-Zusammenfassung.
@@ -168,28 +158,18 @@ def print_model_summary(
         Name des Modells
     y_train, y_test : array
         True labels
-    y_pred_train, y_pred_test : array
-        Predicted labels
     y_proba_train, y_proba_test : array
         Predicted probabilities
-    classification_report_fn : function
-        sklearn classification_report Funktion
     """
     print("=" * 60)
     print(f"{model_name}")
     print("=" * 60)
 
     print("\nTRAIN Performance:")
-    print(f"  Accuracy: {accuracy_score(y_train, y_pred_train):.4f}")
     print(f"  ROC-AUC: {roc_auc_score(y_train, y_proba_train):.4f}")
 
     print("\nTEST Performance:")
-    print(f"  Accuracy: {accuracy_score(y_test, y_pred_test):.4f}")
     print(f"  ROC-AUC: {roc_auc_score(y_test, y_proba_test):.4f}")
-
-    print("\nTest Classification Report:")
-    print(classification_report_fn(y_test, y_pred_test,
-                                   target_names=["Open", "Closed"]))
 
 
 def calc_scores(confusion_mat: npt.NDArray[np.int_]) -> tuple[float, float, float, float]:
