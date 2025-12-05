@@ -177,8 +177,28 @@ def get_model_performance(
         y_exp[calibration_indices], y_prob[calibration_indices]
     )
 
+    # print for testing
+    # print("TPR", tpr_cal)
+    # print("FPR", fpr_cal)
+    # print("thresholds", thresholds_cal)
+
+    # plot for testing
+    # import matplotlib.pyplot as plt
+
+    # Plot ROC curve (TPR vs FPR)
+    # plt.figure(figsize=(8, 5))
+    # plt.plot(fpr_cal, tpr_cal, label="ROC curve", color="darkorange")
+    # plt.plot([0, 1], [0, 1], color="navy", linestyle="--", label="Chance")
+    # plt.xlabel("False Positive Rate")
+    # plt.ylabel("True Positive Rate (Recall)")
+    # plt.title("ROC Curve (Calibration Set)")
+    # plt.legend(loc="lower right")
+    # plt.grid(True)
+    # plt.show()
+
     # Berechne Distanz zur oberen linken Ecke (0, 1)
     distances = np.sqrt((1 - tpr_cal) ** 2 + fpr_cal**2)
+    # distances = tpr_cal - fpr_cal
     best_idx = np.argmin(distances)
     optimal_threshold = thresholds_cal[best_idx] * num_factor
 
