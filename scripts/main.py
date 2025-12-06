@@ -22,7 +22,6 @@ Optional Parameters:
     --iter-sampling  Number of sampling iterations (default: 1000)
     --adapt-delta    Stan adapt_delta parameter, 0.8-0.99 (default: 0.95)
     --max-treedepth  Stan max_treedepth parameter (default: 10)
-    --skip-processing Skip data processing, load from processed_data_for_hmm_training.pkl
     --use-original-indices Use original paper indices from indices.Rdata instead of random seed
 
 Examples:
@@ -37,9 +36,6 @@ Examples:
 
     # Quick test with shorter chains
     python scripts/main.py --model hmm --seed 42 --state 2 --iter-warmup 100 --iter-sampling 100
-
-    # Skip data processing (must have processed_data_for_hmm_training.pkl from previous run)
-    python scripts/main.py --model vdhmm --seed 42 --state 3 --skip-processing
 
     # Custom chain configuration
     python scripts/main.py --model hmm --seed 42 --state 4 --chains 4 --parallel-chains 2 --threads-per-chain 2
@@ -70,7 +66,7 @@ from constants import (
     EVAL_INDICES,
     CALIBRATION_INDICES,
 )
-from helpers import ModelData, comp_entropy, prepare_stan_data
+from helpers import ModelData, prepare_stan_data
 
 
 def process_data(seed: int = 42, use_original_indices: bool = False) -> ModelData:
@@ -503,14 +499,9 @@ def main():
         help="Stan max_treedepth parameter (default: 10)",
     )
     parser.add_argument(
-        "--skip-processing",
-        action="store_true",
-        help="Skip data processing and load from processed_data_for_hmm_training.pkl",
-    )
-    parser.add_argument(
         "--use-original-indices",
         action="store_true",
-        help="Use original paper indices instead of random seed",
+        help="Use original paper indices instead of randomly generated indices with seed",
     )
 
     args = parser.parse_args()
@@ -537,36 +528,16 @@ def main():
     print(f"  Adapt delta: {args.adapt_delta}")
     print(f"  Max treedepth: {args.max_treedepth}")
 
-    # Process data or load existing
-    if args.skip_processing:
-        print("\n[Skipping data processing, loading from file...]")
-        processed_data_path = (
-            PROCESSED_DATA_FOLDER / "processed_data_for_hmm_training.pkl"
-        )
-        if not processed_data_path.exists():
-            raise FileNotFoundError(
-                f"Processed data not found: {processed_data_path}\n"
-                "Run without --skip-processing first."
-            )
-        model_data = ModelData.from_pickle(processed_data_path)
-        print(model_data.summary())
+    model_data = process_data(
+        seed=args.seed, use_original_indices=args.use_original_indices
+    )
+    # Adjust output path based on whether original indices were used
+    if args.use_original_indices:
+        output_path = PROCESSED_DATA_FOLDER / "processed_data_original.pkl"
     else:
-        model_data = process_data(
-            seed=args.seed, use_original_indices=args.use_original_indices
-        )
-        # Adjust output path based on whether original indices were used
-        if args.use_original_indices:
-            output_path = (
-                PROCESSED_DATA_FOLDER
-                / "processed_data_for_hmm_training_original_indices.pkl"
-            )
-        else:
-            output_path = (
-                PROCESSED_DATA_FOLDER
-                / f"processed_data_for_hmm_training_seed{args.seed}.pkl"
-            )
-        model_data.to_pickle(output_path)
-        print(f"\n✓ Processed data saved to {output_path}")
+        output_path = PROCESSED_DATA_FOLDER / f"processed_data_{args.seed}.pkl"
+    model_data.to_pickle(output_path)
+    print(f"\n✓ Processed data saved to {output_path}")
 
     # Train the model
     print(f"\n\n{'#'*70}")
