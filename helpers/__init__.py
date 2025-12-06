@@ -3,8 +3,6 @@ from .model import Model
 from .helper_functions import comp_entropy, prepare_stan_data, load_fitted_model
 from .benchmark_helpers import (
     get_model_performance,
-    create_model_comparison_df,
-    print_model_summary,
 )
 
 __all__ = [
@@ -14,6 +12,4 @@ __all__ = [
     "prepare_stan_data",
     "load_fitted_model",
     "get_model_performance",
-    "create_model_comparison_df",
-    "print_model_summary",
 ]

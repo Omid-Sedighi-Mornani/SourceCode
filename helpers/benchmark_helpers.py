@@ -48,36 +48,6 @@ def create_model_comparison_df(
     return df
 
 
-def print_model_summary(
-    model_name: str,
-    y_train: npt.NDArray[np.int_],
-    y_proba_train: npt.NDArray[np.float64],
-    y_test: npt.NDArray[np.int_],
-    y_proba_test: npt.NDArray[np.float64],
-) -> None:
-    """
-    Druckt eine standardisierte Modell-Zusammenfassung.
-
-    Parameters:
-    -----------
-    model_name : str
-        Name des Modells
-    y_train, y_test : array
-        True labels
-    y_proba_train, y_proba_test : array
-        Predicted probabilities
-    """
-    print("=" * 60)
-    print(f"{model_name}")
-    print("=" * 60)
-
-    print("\nTRAIN Performance:")
-    print(f"  ROC-AUC: {roc_auc_score(y_train, y_proba_train):.4f}")
-
-    print("\nTEST Performance:")
-    print(f"  ROC-AUC: {roc_auc_score(y_test, y_proba_test):.4f}")
-
-
 import numpy as np
 from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix
 
@@ -139,6 +109,7 @@ def get_model_performance(
     y_exp,
     calibration_indices,
     eval_indices,
+    train_indices=None,
     adjust_threshold=False,
 ):
     """
@@ -146,14 +117,17 @@ def get_model_performance(
 
     Parameters:
     -----------
-    probability_score : array-like
+    y_prob : array-like
         Predicted probabilities für alle Daten (für positive Klasse)
-    observations : array-like
+    y_exp : array-like
         True labels für alle Daten
     calibration_indices : array-like
         Indices für Calibration-Set (um optimalen Threshold zu finden)
-    validation_indices : array-like
+    eval_indices : array-like
         Indices für Validation-Set (um Performance zu messen)
+    train_indices : array-like, optional
+        Indices für Training-Set (um In-Sample AUC zu berechnen)
+        Wenn None, wird In-Sample AUC nicht berechnet
     adjust_threshold : bool, default=False
         Wenn True, wird Threshold mit Faktor 1.2 multipliziert
         (nur für spezielle Chain-Modelle ohne Entropy)
@@ -161,7 +135,8 @@ def get_model_performance(
     Returns:
     --------
     dict : Dictionary mit Performance-Metriken
-        - auc: AUC Score auf Validation-Daten
+        - auc: AUC Score auf Validation-Daten (Out-of-Sample)
+        - in_sample_auc: AUC Score auf Training-Daten (nur wenn train_indices gegeben)
         - balanced_accuracy: Balanced Accuracy
         - f1: F1 Score
         - specificity: Specificity
@@ -177,28 +152,8 @@ def get_model_performance(
         y_exp[calibration_indices], y_prob[calibration_indices]
     )
 
-    # print for testing
-    # print("TPR", tpr_cal)
-    # print("FPR", fpr_cal)
-    # print("thresholds", thresholds_cal)
-
-    # plot for testing
-    # import matplotlib.pyplot as plt
-
-    # Plot ROC curve (TPR vs FPR)
-    # plt.figure(figsize=(8, 5))
-    # plt.plot(fpr_cal, tpr_cal, label="ROC curve", color="darkorange")
-    # plt.plot([0, 1], [0, 1], color="navy", linestyle="--", label="Chance")
-    # plt.xlabel("False Positive Rate")
-    # plt.ylabel("True Positive Rate (Recall)")
-    # plt.title("ROC Curve (Calibration Set)")
-    # plt.legend(loc="lower right")
-    # plt.grid(True)
-    # plt.show()
-
     # Berechne Distanz zur oberen linken Ecke (0, 1)
     distances = np.sqrt((1 - tpr_cal) ** 2 + fpr_cal**2)
-    # distances = tpr_cal - fpr_cal
     best_idx = np.argmin(distances)
     optimal_threshold = thresholds_cal[best_idx] * num_factor
 
@@ -208,8 +163,13 @@ def get_model_performance(
     # Confusion Matrix auf Validation-Daten
     cm = confusion_matrix(y_exp[eval_indices], y_pred)
 
-    # AUC auf Validation-Daten
+    # AUC auf Validation-Daten (Out-of-Sample)
     auc_score = 100 * roc_auc_score(y_exp[eval_indices], y_prob[eval_indices])
+
+    # In-Sample AUC (optional)
+    in_sample_auc = None
+    if train_indices is not None:
+        in_sample_auc = 100 * roc_auc_score(y_exp[train_indices], y_prob[train_indices])
 
     # Klassifikationsmetriken
     classification_scores = 100 * calc_scores(cm)
@@ -217,6 +177,7 @@ def get_model_performance(
     # Ergebnisse als Dictionary zurückgeben
     results = {
         "auc": round(auc_score, 2),
+        "in_sample_auc": round(in_sample_auc, 2) if in_sample_auc is not None else None,
         "balanced_accuracy": round(classification_scores[0], 2),
         "f1": round(classification_scores[1], 2),
         "specificity": round(classification_scores[2], 2),
