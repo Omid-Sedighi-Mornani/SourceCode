@@ -7,17 +7,18 @@ This script performs:
 2. Model training for HMM or VDHMM with specified parameters
 
 Usage:
-    python scripts/main.py --model <hmm|vdhmm> --seed <int> --state <2-5> [OPTIONS]
+    python scripts/main.py --model <hmm|vdhmm|hmm_parallelized|vdhmm_parallelized> --seed <int> --state <2-5> [OPTIONS]
 
 Required Parameters:
-    --model          Model type: 'hmm' or 'vdhmm'
+    --model          Model type: 'hmm', 'vdhmm', 'hmm_parallelized', or 'vdhmm_parallelized'
     --seed           Random seed for reproducibility (any integer, e.g., 42, 123, 456)
     --state          Number of hidden states: 2, 3, 4, or 5
 
 Optional Parameters:
     --chains         Number of MCMC chains (default: 2)
     --parallel-chains Number of parallel chains (default: 2)
-    --threads-per-chain Number of threads per chain (default: 1)
+    --threads-per-chain Number of threads per chain (default: 1, use 4+ for parallelized models)
+    --grainsize      Grainsize for reduce_sum in parallelized models (default: 1)
     --iter-warmup    Number of warmup iterations (default: 1000)
     --iter-sampling  Number of sampling iterations (default: 1000)
     --adapt-delta    Stan adapt_delta parameter, 0.8-0.99 (default: 0.95)
@@ -30,6 +31,9 @@ Examples:
 
     # Train VDHMM with S=3, seed=123
     python scripts/main.py --model vdhmm --seed 123 --state 3
+
+    # Train parallelized VDHMM with 4 threads per chain
+    python scripts/main.py --model vdhmm_parallelized --seed 42 --state 3 --threads-per-chain 4 --grainsize 1
 
     # Use original paper indices instead of random seed
     python scripts/main.py --model hmm --seed 42 --state 2 --use-original-indices
@@ -283,6 +287,7 @@ def train_model_cmdstan(
     chains: int = 2,
     parallel_chains: int = 2,
     threads_per_chain: int = 1,
+    grainsize: int = 1,
     iter_warmup: int = 1000,
     iter_sampling: int = 1000,
     seed: int = 42,
@@ -300,13 +305,15 @@ def train_model_cmdstan(
     S : int
         Number of hidden states (2-5)
     model_name : str
-        'vdhmm' or 'hmm'
+        'hmm', 'vdhmm', 'hmm_parallelized', or 'vdhmm_parallelized'
     chains : int
         Number of MCMC chains
     parallel_chains : int
         Number of chains to run in parallel
     threads_per_chain : int
-        Number of threads per chain
+        Number of threads per chain (use 4+ for parallelized models)
+    grainsize : int
+        Grainsize for reduce_sum in parallelized models (default: 1)
     iter_warmup : int
         Number of warmup iterations
     iter_sampling : int
@@ -325,11 +332,19 @@ def train_model_cmdstan(
     cmdstanpy.CmdStanMCMC
         Fitted model object
     """
-    assert model_name in ["vdhmm", "hmm"], f"Invalid model_name: {model_name}"
+    valid_models = ["hmm", "vdhmm", "hmm_parallelized", "vdhmm_parallelized"]
+    assert (
+        model_name in valid_models
+    ), f"Invalid model_name: {model_name}. Must be one of {valid_models}"
     assert S in range(2, 6), "S must be between 2 and 5"
 
     # Prepare Stan data
     stan_data = prepare_stan_data(model_data, S)
+
+    # Add grainsize for parallelized models
+    is_parallelized = "parallelized" in model_name
+    if is_parallelized:
+        stan_data["grainsize"] = grainsize
 
     # Model file
     model_file = STAN_MODEL_FOLDER / f"{model_name}.stan"
@@ -340,10 +355,15 @@ def train_model_cmdstan(
     print(f"Training {model_name.upper()} with S={S} states (CmdStanPy)")
     print(f"{'='*70}")
     print(f"Model file: {model_file}")
+    print(f"Parallelized: {'Yes' if is_parallelized else 'No'}")
     print(f"\nConfiguration:")
     print(f"  Chains: {chains}")
     print(f"  Parallel chains: {parallel_chains}")
     print(f"  Threads per chain: {threads_per_chain}")
+    if is_parallelized:
+        print(f"  Grainsize (reduce_sum): {grainsize}")
+        total_threads = parallel_chains * threads_per_chain
+        print(f"  Total threads: {total_threads}")
     print(f"  Warmup iterations: {iter_warmup}")
     print(f"  Sampling iterations: {iter_sampling}")
     print(f"  Total iterations: {iter_warmup + iter_sampling}")
@@ -440,8 +460,8 @@ def main():
         "--model",
         type=str,
         required=True,
-        choices=["hmm", "vdhmm"],
-        help="Model to train: 'hmm' or 'vdhmm'",
+        choices=["hmm", "vdhmm", "hmm_parallelized", "vdhmm_parallelized"],
+        help="Model to train: 'hmm', 'vdhmm', 'hmm_parallelized', or 'vdhmm_parallelized'",
     )
     parser.add_argument(
         "--seed",
@@ -472,7 +492,13 @@ def main():
         "--threads-per-chain",
         type=int,
         default=1,
-        help="Number of threads per chain (default: 1)",
+        help="Number of threads per chain (default: 1, use 4+ for parallelized models)",
+    )
+    parser.add_argument(
+        "--grainsize",
+        type=int,
+        default=1,
+        help="Grainsize for reduce_sum in parallelized models (default: 1)",
     )
     parser.add_argument(
         "--iter-warmup",
@@ -523,6 +549,8 @@ def main():
     print(f"  Chains: {args.chains}")
     print(f"  Parallel chains: {args.parallel_chains}")
     print(f"  Threads per chain: {args.threads_per_chain}")
+    if "parallelized" in args.model:
+        print(f"  Grainsize: {args.grainsize}")
     print(f"  Warmup iterations: {args.iter_warmup}")
     print(f"  Sampling iterations: {args.iter_sampling}")
     print(f"  Adapt delta: {args.adapt_delta}")
@@ -552,6 +580,7 @@ def main():
             chains=args.chains,
             parallel_chains=args.parallel_chains,
             threads_per_chain=args.threads_per_chain,
+            grainsize=args.grainsize,
             iter_warmup=args.iter_warmup,
             iter_sampling=args.iter_sampling,
             seed=args.seed,

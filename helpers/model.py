@@ -49,6 +49,8 @@ class Model:
         """Validate model after initialization."""
         assert self.model_name in [
             "vdhmm",
+            "hmm_parallelized",
+            "vdhmm_parallelized",
             "hmm",
         ], f"Invalid model_name: {self.model_name}"
         assert self.S in range(2, 6), f"S must be between 2 and 5, got {self.S}"
@@ -160,7 +162,9 @@ class Model:
         """
         return self.fit.diagnose()
 
-    def get_parameter_summary(self, parameters: Optional[list[str]] = None) -> pd.DataFrame:
+    def get_parameter_summary(
+        self, parameters: Optional[list[str]] = None
+    ) -> pd.DataFrame:
         """
         Get summary statistics for specific parameters.
 
@@ -174,9 +178,7 @@ class Model:
             return self.summary
 
         # Filter summary for specified parameters
-        return self.summary[
-            self.summary.index.str.startswith(tuple(parameters))
-        ]
+        return self.summary[self.summary.index.str.startswith(tuple(parameters))]
 
     def summary_text(self) -> str:
         """
