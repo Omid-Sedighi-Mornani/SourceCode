@@ -91,6 +91,50 @@ def build_summary_df(
     time: List[int],
     business_covariates: pd.DataFrame,
 ) -> pd.DataFrame:
+    """
+    Builds a summary statistics DataFrame with mean and standard deviation for 12 key variables.
+
+    Calculates descriptive statistics (mean and SD) for review-level data (ratings, sentiment,
+    interarrival times) and business-level covariates (density, age, check-in rate, etc.).
+
+    Parameters:
+    -----------
+    ratings : List[int]
+        Star ratings for reviews (1-5 scale)
+    temp_diff : List[int]
+        Time differences between consecutive ratings (in days), with negative values removed
+    sentiment : List[float]
+        Sentiment scores for reviews
+    time : List[int]
+        Number of reviews per business
+    business_covariates : pd.DataFrame
+        DataFrame containing business-level covariates with columns:
+        - density: Restaurant density in area
+        - Age: Business age (in days, converted to months by dividing by 28)
+        - Checkin: Check-in rate
+        - chain: Binary indicator for chain status
+        - ZRI: Zillow Rent Index (rent level)
+        - Restaurant.Size: Size in m²
+        - Number.of.Seats: Seating capacity
+        - Closed: Binary indicator (1=closed, 0=open)
+
+    Returns:
+    --------
+    pd.DataFrame
+        Summary statistics with columns ['Variable', 'Mean', 'SD'] containing 12 rows:
+        1. Rating
+        2. Days Between Ratings
+        3. Sentiment
+        4. Density
+        5. Age (in months)
+        6. Check-in rate
+        7. Chain status
+        8. Rent level (Zillow Rent Index)
+        9. Restaurant Size (in m^2)
+        10. Number of Seats
+        11. Time
+        12. Closed
+    """
     summary_data = {"Variable": [], "Mean": [], "SD": []}
 
     # Rating level
