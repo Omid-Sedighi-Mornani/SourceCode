@@ -1,6 +1,11 @@
 from .model_data import ModelData
 from .model import Model
-from .helper_functions import comp_entropy, prepare_stan_data, load_fitted_model
+from .helper_functions import (
+    comp_entropy,
+    prepare_stan_data,
+    load_fitted_model,
+    build_summary_df,
+)
 from .benchmark_helpers import (
     get_model_performance,
 )
@@ -12,4 +17,5 @@ __all__ = [
     "prepare_stan_data",
     "load_fitted_model",
     "get_model_performance",
+    "build_summary_df",
 ]

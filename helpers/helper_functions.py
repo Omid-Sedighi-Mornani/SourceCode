@@ -1,6 +1,7 @@
 import numpy as np
+import pandas as pd
 from scipy.stats import entropy
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 from .model_data import ModelData
 from .model import Model
 from constants import FITTED_MODEL_FOLDER
@@ -72,10 +73,94 @@ def load_fitted_model(
     """
     if seed is None:
         # Verwende original_indices aus dem Paper
-        model_path = FITTED_MODEL_FOLDER / f"{model_name}_{S}_original_indices_cmdstan.pkl"
+        model_path = (
+            FITTED_MODEL_FOLDER / f"{model_name}_{S}_original_indices_cmdstan.pkl"
+        )
     else:
         # Verwende spezifischen Seed
         model_path = FITTED_MODEL_FOLDER / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
 
     model = Model.from_pickle(model_path)
     return model
+
+
+def build_summary_df(
+    ratings: List[int],
+    temp_diff: List[int],
+    sentiment: List[float],
+    time: List[int],
+    business_covariates: pd.DataFrame,
+) -> pd.DataFrame:
+    summary_data = {"Variable": [], "Mean": [], "SD": []}
+
+    # Rating level
+    summary_data["Variable"].append("Rating")
+    summary_data["Mean"].append(round(np.mean(ratings), 2))
+    summary_data["SD"].append(round(np.std(ratings, ddof=1), 2))
+
+    # Days Between Ratings
+    summary_data["Variable"].append("Days Between Ratings")
+    summary_data["Mean"].append(round(np.mean(temp_diff), 2))
+    summary_data["SD"].append(round(np.std(temp_diff, ddof=1), 2))
+
+    # Sentiment statistics
+    summary_data["Variable"].append("Sentiment")
+    summary_data["Mean"].append(round(np.nanmean(sentiment), 2))
+    summary_data["SD"].append(round(np.nanstd(sentiment, ddof=1), 2))
+
+    # Restaurant Density
+    summary_data["Variable"].append("Density")
+    summary_data["Mean"].append(round(np.mean(business_covariates["density"]), 2))
+    summary_data["SD"].append(round(np.std(business_covariates["density"], ddof=1), 2))
+
+    # Age (in Monaten, daher / 28)
+    summary_data["Variable"].append("Age (in months)")
+    summary_data["Mean"].append(round(np.mean(business_covariates["Age"]) / 28, 2))
+    summary_data["SD"].append(round(np.std(business_covariates["Age"] / 28, ddof=1), 2))
+
+    # Checkin
+    summary_data["Variable"].append("Check-in rate")
+    summary_data["Mean"].append(round(np.mean(business_covariates["Checkin"]), 2))
+    summary_data["SD"].append(round(np.std(business_covariates["Checkin"], ddof=1), 2))
+
+    # Chain status
+    summary_data["Variable"].append("Chain status")
+    summary_data["Mean"].append(round(np.mean(business_covariates["chain"]), 2))
+    summary_data["SD"].append(round(np.std(business_covariates["chain"], ddof=1), 2))
+
+    # ZRI (Rent Level)
+    summary_data["Variable"].append("Rent level (Zillow Rent Index)")
+    summary_data["Mean"].append(round(np.nanmean(business_covariates["ZRI"]), 2))
+    summary_data["SD"].append(round(np.nanstd(business_covariates["ZRI"], ddof=1), 2))
+
+    # Restaurant Size
+    summary_data["Variable"].append("Restaurant Size (in m^2)")
+    summary_data["Mean"].append(
+        round(np.nanmean(business_covariates["Restaurant.Size"]), 2)
+    )
+    summary_data["SD"].append(
+        round(np.nanstd(business_covariates["Restaurant.Size"], ddof=1), 2)
+    )
+
+    # Number of Seats
+    summary_data["Variable"].append("Number of Seats")
+    summary_data["Mean"].append(
+        round(np.nanmean(business_covariates["Number.of.Seats"]), 2)
+    )
+    summary_data["SD"].append(
+        round(np.nanstd(business_covariates["Number.of.Seats"], ddof=1), 2)
+    )
+
+    # Time
+    summary_data["Variable"].append("Time")
+    summary_data["Mean"].append(round(np.mean(time), 2))
+    summary_data["SD"].append(round(np.std(time, ddof=1), 2))
+
+    # Closed
+    summary_data["Variable"].append("Closed")
+    summary_data["Mean"].append(round(np.mean(business_covariates["Closed"]), 2))
+    summary_data["SD"].append(round(np.std(business_covariates["Closed"], ddof=1), 2))
+
+    summary_df = pd.DataFrame(summary_data)
+
+    return summary_df
