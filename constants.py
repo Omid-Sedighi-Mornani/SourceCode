@@ -13,10 +13,11 @@ DATA_FOLDER = PROJECT_ROOT / "data"
 PROCESSED_DATA_FOLDER = DATA_FOLDER / "processed"
 STAN_MODEL_FOLDER = DATA_FOLDER / "stan_code"
 FITTED_MODEL_FOLDER = PROJECT_ROOT / "models"
+FITTED_MODEL_FOLDER_2000_ITER = FITTED_MODEL_FOLDER / "2000_iter"
+
 ASSETS_FOLDER = PROJECT_ROOT / "assets"
 
 # Original indices from R data (indices.Rdata)
-# Note: These are already converted from R's 1-based to Python's 0-based indexing
 
 # Train indices (500 samples)
 TRAIN_INDICES = np.array(

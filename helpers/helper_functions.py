@@ -43,6 +43,7 @@ def load_fitted_model(
     model_name: Literal["hmm", "vdhmm"],
     S: int,
     seed: Optional[int] = None,
+    model_folder=FITTED_MODEL_FOLDER,
 ) -> Model:
     """
     Lädt ein trainiertes CmdStanPy Modell.
@@ -71,14 +72,15 @@ def load_fitted_model(
     >>> # Lade Modell mit Original-Indices aus dem Paper
     >>> model = load_fitted_model("vdhmm", 4, seed=None)
     """
+    if model_folder is None:
+        model_folder = FITTED_MODEL_FOLDER
+
     if seed is None:
         # Verwende original_indices aus dem Paper
-        model_path = (
-            FITTED_MODEL_FOLDER / f"{model_name}_{S}_original_indices_cmdstan.pkl"
-        )
+        model_path = model_folder / f"{model_name}_{S}_original_indices_cmdstan.pkl"
     else:
         # Verwende spezifischen Seed
-        model_path = FITTED_MODEL_FOLDER / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
+        model_path = model_folder / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
 
     model = Model.from_pickle(model_path)
     return model
