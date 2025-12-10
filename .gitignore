@@ -151,7 +151,7 @@ plots/
 
 # Specific to this project (customize as needed)
 testing.py
-testing.ipynb
+# testing.ipynb
 experiments/
 sandbox/
 scratch/
