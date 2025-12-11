@@ -1,8 +1,8 @@
 # %% [markdown]
 # ## Data Processing – Replicating “I Will Survive: Predicting Business Failures from Customer Ratings”
-# 
+#
 # The following pipeline mirrors the data preparation and analysis steps of the Marketing Science case study and stores them in a Pickle file for further analysis.
-# 
+#
 
 # %%
 import sys
@@ -238,9 +238,6 @@ R_scaled = R / np.sqrt(n_train - 1)
 
 X_test = cov_mat_preprocessed[n_train:]
 
-display(X_train)
-display(pd.DataFrame(cov_mat_preprocessed))
-
 # %%
 from helpers import comp_entropy
 
@@ -344,5 +341,3 @@ model_data.to_pickle(output_path)
 
 print(f"Data saved to {output_path}")
 print(model_data.summary())
-
-
