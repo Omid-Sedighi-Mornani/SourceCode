@@ -120,11 +120,16 @@ def process_data(seed: int = 42, use_original_indices: bool = False) -> ModelDat
         eval_indices = EVAL_INDICES.copy()
         print("  Using ORIGINAL indices from paper (indices.Rdata)")
     else:
-        # Generate random indices using the seed
         indices = np.random.permutation(len(business_covariates))
-        train_indices = indices[:500]
-        calibration_indices = indices[500:700]
-        eval_indices = indices[700:]
+        indices_val_cal = np.random.permutation(
+            np.arange(500, len(business_covariates))
+        )  # range 500-921 (because of sorting)
+        # Generate random indices using the seed
+        train_indices = indices[:500]  # take 500 random samples
+        calibration_indices = indices_val_cal[
+            :100
+        ]  # take 100 random out of range 500-921
+        eval_indices = indices_val_cal[100:]  # take 321 random out range 500-921
         print("  Using RANDOM indices generated with seed")
 
     business_covariates["Train"] = 0
