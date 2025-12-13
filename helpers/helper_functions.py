@@ -17,9 +17,9 @@ def comp_entropy(x):
 
 def prepare_stan_data(model_data: ModelData, S: int):
     """
-    Bereitet die Daten für Stan vor.
+    Prepares the data for Stan.
 
-    CmdStanPy braucht die Daten als JSON-kompatibles Dictionary.
+    CmdStanPy requires the data as a JSON-compatible dictionary.
     """
     stan_data = {
         "S": S,
@@ -46,40 +46,40 @@ def load_fitted_model(
     model_folder=FITTED_MODEL_FOLDER,
 ) -> Model:
     """
-    Lädt ein trainiertes CmdStanPy Modell.
+    Loads a trained CmdStanPy model.
 
     Parameters:
     -----------
     model_name : Literal["hmm", "vdhmm"]
-        Name des Modells ('hmm' oder 'vdhmm')
+        Name of the model ('hmm' or 'vdhmm')
     S : int
-        Anzahl der Hidden States (2-5)
+        Number of hidden states (2-5)
     seed : Optional[int], default=None
-        Random seed des trainierten Modells.
-        - Wenn seed angegeben ist: Lädt Modell mit diesem Seed
-        - Wenn seed=None: Lädt Modell mit original_indices aus dem Paper
+        Random seed of the trained model.
+        - If seed is specified: Loads model with this seed
+        - If seed=None: Loads model with original_indices from the paper
 
     Returns:
     --------
     Model
-        Geladenes Modell-Objekt
+        Loaded model object
 
     Examples:
     ---------
-    >>> # Lade Modell mit Seed 42
+    >>> # Load model with seed 42
     >>> model = load_fitted_model("hmm", 3, seed=42)
 
-    >>> # Lade Modell mit Original-Indices aus dem Paper
+    >>> # Load model with original indices from the paper
     >>> model = load_fitted_model("vdhmm", 4, seed=None)
     """
     if model_folder is None:
         model_folder = FITTED_MODEL_FOLDER
 
     if seed is None:
-        # Verwende original_indices aus dem Paper
+        # Use original_indices from the paper
         model_path = model_folder / f"{model_name}_{S}_original_indices_cmdstan.pkl"
     else:
-        # Verwende spezifischen Seed
+        # Use specific seed
         model_path = model_folder / f"{model_name}_{S}_seed{seed}_cmdstan.pkl"
 
     model = Model.from_pickle(model_path)
@@ -159,7 +159,7 @@ def build_summary_df(
     summary_data["Mean"].append(round(np.mean(business_covariates["density"]), 2))
     summary_data["SD"].append(round(np.std(business_covariates["density"], ddof=1), 2))
 
-    # Age (in Monaten, daher / 28)
+    # Age (in months, therefore / 28)
     summary_data["Variable"].append("Age (in months)")
     summary_data["Mean"].append(round(np.mean(business_covariates["Age"]) / 28, 2))
     summary_data["SD"].append(round(np.std(business_covariates["Age"] / 28, ddof=1), 2))

@@ -3,7 +3,8 @@ Helper functions for benchmark model evaluation
 """
 
 import numpy as np
-from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, roc_auc_score, confusion_matrix, auc
 
 
 def calc_scores(cm):
@@ -111,3 +112,49 @@ def get_model_performance(
     }
 
     return results
+
+
+def plot_roc_curve(y_true, y_prob, save_path):
+    """
+    Plots an ROC curve for the given data and reports the threshold for the point
+    closest to (0, 1). Saves the figure to ASSETS_FOLDER / "roc_plot.png".
+
+    Args:
+        y_true (array-like): True binary labels (0 or 1).
+        y_prob (array-like): Probabilities or scores for the positive class.
+    """
+    import os
+
+    fpr, tpr, thresholds = roc_curve(y_true, y_prob)
+    roc_auc = auc(fpr, tpr)
+
+    # Find the point with smallest Euclidean distance to (0, 1)
+    distances = np.sqrt((fpr - 0) ** 2 + (tpr - 1) ** 2)
+    min_idx = np.argmin(distances)
+    closest_fpr = fpr[min_idx]
+    closest_tpr = tpr[min_idx]
+    closest_threshold = thresholds[min_idx]
+
+    plt.figure()
+    plt.plot(fpr, tpr, color="darkorange", label=f"ROC curve (AUC = {roc_auc:.2f})")
+    plt.plot([0, 1], [0, 1], color="navy", linestyle="--")
+    plt.plot(0, 1, marker="o", color="green", markersize=8, label="(0, 1) Ideal")
+    plt.plot(
+        closest_fpr,
+        closest_tpr,
+        marker="o",
+        color="red",
+        markersize=8,
+        label=f"Closest to (0, 1), threshold={closest_threshold*100:.2f}%",
+    )
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("FPR")
+    plt.ylabel("TPR")
+    plt.legend(loc="lower right")
+    plt.grid(True)
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches="tight")
+
+    plt.close()
