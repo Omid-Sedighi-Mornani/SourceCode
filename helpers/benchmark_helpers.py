@@ -157,4 +157,4 @@ def plot_roc_curve(y_true, y_prob, save_path):
     if save_path:
         plt.savefig(save_path, bbox_inches="tight")
 
-    plt.close()
+    plt.show()
